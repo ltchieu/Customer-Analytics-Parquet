@@ -1,12 +1,18 @@
 // React import not required with new JSX transform
+import { useState } from 'react'
 import { Routes, Route, Link, useLocation } from 'react-router-dom'
+import { Upload } from 'lucide-react'
 import DashboardPage from './pages/Dashboard/DashboardPage'
 import CustomersPage from './pages/Customers/CustomersPage'
+import SegmentsPage from './pages/Segments/SegmentsPage'
+import InsightsPage from './pages/Insights/InsightsPage'
+import UploadModal from './components/UploadModal'
 import logo from './assets/logo.png'
 
 
 export default function App(){
 const location = useLocation()
+const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
 
 return (
 <div className="min-h-screen flex text-gray-800">
@@ -17,8 +23,8 @@ return (
 <nav className="space-y-2">
 <Link to="/" className={`block px-3 py-2 rounded-lg font-medium ${location.pathname === '/' ? 'text-gray-800' : 'text-white hover:bg-gray-600'}`} style={location.pathname === '/' ? { backgroundColor: '#DDDDDD' } : {}}>Dashboard</Link>
 <Link to="/customers" className={`block px-3 py-2 rounded-lg font-medium ${location.pathname === '/customers' ? 'text-gray-800' : 'text-white hover:bg-gray-600'}`} style={location.pathname === '/customers' ? { backgroundColor: '#DDDDDD' } : {}}>Customers</Link>
-<a className="block px-3 py-2 rounded-lg text-white hover:bg-gray-600">Segments</a>
-<a className="block px-3 py-2 rounded-lg text-white hover:bg-gray-600">Reports</a>
+<Link to="/segments" className={`block px-3 py-2 rounded-lg font-medium ${location.pathname === '/segments' ? 'text-gray-800' : 'text-white hover:bg-gray-600'}`} style={location.pathname === '/segments' ? { backgroundColor: '#DDDDDD' } : {}}>Segments</Link>
+<Link to="/insights" className={`block px-3 py-2 rounded-lg font-medium ${location.pathname === '/insights' ? 'text-gray-800' : 'text-white hover:bg-gray-600'}`} style={location.pathname === '/insights' ? { backgroundColor: '#DDDDDD' } : {}}>Insights</Link>
 </nav>
 </aside>
 
@@ -30,14 +36,25 @@ return (
 </div>
 <div className="flex items-center gap-3">
 <input className="px-3 py-2 border rounded-lg text-sm" placeholder="Search..." />
-<button className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Sign in</button>
+<button 
+  onClick={() => setIsUploadModalOpen(true)}
+  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+>
+  <Upload size={18} />
+  Upload Data
+</button>
+<button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">Sign in</button>
 </div>
 </header>
+
+<UploadModal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} />
 
 
 <Routes>
 <Route path="/" element={<DashboardPage/>} />
 <Route path="/customers" element={<CustomersPage/>} />
+<Route path="/segments" element={<SegmentsPage/>} />
+<Route path="/insights" element={<InsightsPage/>} />
 </Routes>
 </main>
 </div>

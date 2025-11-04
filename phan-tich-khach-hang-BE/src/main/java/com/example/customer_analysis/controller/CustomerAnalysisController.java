@@ -232,6 +232,7 @@ public class CustomerAnalysisController {
     private InsightDTO generateInsight(Segment segment) {
         InsightDTO insight = new InsightDTO();
         insight.setSegmentId(segment.getSegmentId());
+        insight.setSegmentName(segment.getSegmentName());
         insight.setCharacteristics(segment.getDescription());
 
         List<String> recommendations = new ArrayList<>();
