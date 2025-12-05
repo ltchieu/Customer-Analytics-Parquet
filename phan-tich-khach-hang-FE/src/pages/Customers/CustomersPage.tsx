@@ -8,9 +8,13 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { getCustomers, getSegments, CustomerDTO, SegmentDTO } from "../../services/api";
+import { getCustomers, getSegments } from "../../services/api";
+import { SegmentDTO } from "../../model/cluster_model";
+import { CustomerDTO } from "../../model/customer_model";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
+
+import { FileFilter } from '../../components/FileFilter';
 
 const CustomersPage: React.FC = () => {
   const [customers, setCustomers] = useState<CustomerDTO[]>([]);
@@ -18,17 +22,18 @@ const CustomersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSegment, setSelectedSegment] = useState<number | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     fetchData();
-  }, [selectedSegment]);
+  }, [selectedSegment, selectedFile]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [customersData, segmentsData] = await Promise.all([
-        getCustomers(selectedSegment),
-        getSegments(),
+        getCustomers(selectedSegment, undefined, selectedFile),
+        getSegments(selectedFile),
       ]);
       setCustomers(customersData);
       setSegments(segmentsData);
@@ -78,7 +83,8 @@ const CustomersPage: React.FC = () => {
             Quản lý thông tin và hoạt động của khách hàng
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+          <FileFilter selectedFile={selectedFile} onFileSelect={setSelectedFile} />
           <input
             className="border rounded-lg px-3 py-2 text-sm"
             placeholder="Tìm kiếm khách hàng..."
@@ -93,7 +99,7 @@ const CustomersPage: React.FC = () => {
 
       {/* Filters */}
       <div className="flex gap-4">
-        <select 
+        <select
           className="border rounded-lg px-3 py-2 text-sm"
           value={selectedSegment ?? ''}
           onChange={(e) => setSelectedSegment(e.target.value ? parseInt(e.target.value) : undefined)}
@@ -130,11 +136,13 @@ const CustomersPage: React.FC = () => {
               filteredCustomers.slice(0, 50).map((customer) => {
                 const segment = segments.find(s => s.segmentId === customer.segment);
                 return (
-                  <tr key={customer.id} className="border-t hover:bg-gray-50">
-                    <td className="py-3 px-4 font-medium">{customer.id}</td>
+                  <tr key={customer.id} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => window.location.href = `/customers/${customer.id}`}>
+                    <td className="py-3 px-4 font-medium text-blue-600 hover:underline">
+                      {customer.id}
+                    </td>
                     <td className="py-3 px-4">{customer.education}</td>
                     <td className="py-3 px-4">{customer.maritalStatus}</td>
-                    <td className="py-3 px-4">${customer.income.toLocaleString()}</td>
+                    <td className="py-3 px-4">${customer.income?.toLocaleString() ?? 'N/A'}</td>
                     <td className="py-3 px-4">
                       <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
                         {segment?.segmentName || `Nhóm ${customer.segment}`}

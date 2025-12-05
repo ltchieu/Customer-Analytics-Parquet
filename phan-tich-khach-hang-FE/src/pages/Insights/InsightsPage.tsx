@@ -11,11 +11,15 @@ import {
   LineChart,
   Line,
 } from 'recharts';
-import { getInsights, getSegments, InsightDTO, SegmentDTO } from '../../services/api';
+import { getInsights, getSegments, generateReport, downloadReport } from '../../services/api';
+import { InsightDTO } from '../../model/insight_model';
+import { SegmentDTO } from '../../model/cluster_model';
 import ChartCard from '../../components/ChartCard';
 import { Card } from '../../components/Card';
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#ef4444'];
+
+import { FileFilter } from '../../components/FileFilter';
 
 export default function InsightsPage() {
   const [insights, setInsights] = useState<InsightDTO[]>([]);
@@ -23,17 +27,18 @@ export default function InsightsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedFile]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [insightsData, segmentsData] = await Promise.all([
-        getInsights(),
-        getSegments(),
+        getInsights(selectedFile),
+        getSegments(selectedFile),
       ]);
       setInsights(insightsData);
       setSegments(segmentsData);
@@ -48,14 +53,14 @@ export default function InsightsPage() {
 
   const getHighestSpendingSegment = () => {
     if (!segments.length) return null;
-    return segments.reduce((max, seg) => 
+    return segments.reduce((max, seg) =>
       seg.avgSpending > max.avgSpending ? seg : max
     );
   };
 
   const getBestResponseSegment = () => {
     if (!segments.length) return null;
-    return segments.reduce((max, seg) => 
+    return segments.reduce((max, seg) =>
       seg.responseRate > max.responseRate ? seg : max
     );
   };
@@ -73,12 +78,29 @@ export default function InsightsPage() {
   const handleExportPDF = async () => {
     try {
       setIsExporting(true);
-      // TODO: Implement PDF export functionality
-      console.log('Exporting to PDF...');
-      alert('Chức năng xuất PDF đang được phát triển');
-    } catch (err) {
+
+      // 1. Generate Report
+      const result = await generateReport('full');
+      const { reportId, fileName } = result.data;
+
+      // 2. Download Report
+      const blob = await downloadReport(reportId);
+
+      // 3. Trigger Download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName || `report_${reportId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+    } catch (err: any) {
       console.error('Error exporting PDF:', err);
-      alert('Không thể xuất file PDF');
+      alert(err.message || 'Không thể xuất file PDF');
     } finally {
       setIsExporting(false);
     }
@@ -119,9 +141,12 @@ export default function InsightsPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-7xl mx-auto">
-            <div className="mb-6">
-              <h1 className="text-3xl font-extrabold text-gray-900">Phân tích & Chiến lược Marketing</h1>
-              <p className="text-gray-600">Phân tích chuyên sâu và đề xuất chiến lược cho từng phân khúc khách hàng</p>
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-extrabold text-gray-900">Phân tích & Chiến lược Marketing</h1>
+                <p className="text-gray-600">Phân tích chuyên sâu và đề xuất chiến lược cho từng phân khúc khách hàng</p>
+              </div>
+              <FileFilter selectedFile={selectedFile} onFileSelect={setSelectedFile} />
             </div>
 
             {/* Key Findings */}
@@ -216,13 +241,12 @@ export default function InsightsPage() {
                           {segment.responseRate.toFixed(1)}%
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            segment.avgSpending > 1000 ? 'bg-green-100 text-green-800' :
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${segment.avgSpending > 1000 ? 'bg-green-100 text-green-800' :
                             segment.avgSpending > 500 ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
+                              'bg-red-100 text-red-800'
+                            }`}>
                             {segment.avgSpending > 1000 ? 'Cao' :
-                             segment.avgSpending > 500 ? 'Trung bình' : 'Thấp'}
+                              segment.avgSpending > 500 ? 'Trung bình' : 'Thấp'}
                           </span>
                         </td>
                       </tr>
@@ -272,7 +296,7 @@ export default function InsightsPage() {
             <div className="grid grid-cols-1 gap-6">
               {insights.map((insight, index) => (
                 <Card key={insight.segmentId} className="overflow-hidden">
-                  <div 
+                  <div
                     className="h-2"
                     style={{ backgroundColor: COLORS[index % COLORS.length] }}
                   ></div>
@@ -329,22 +353,31 @@ export default function InsightsPage() {
             {/* Export PDF Button */}
             <div className="mt-8 flex justify-end">
               <button
+                onClick={handleExportPDF}
+                disabled={isExporting}
                 className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <svg 
-                  className="w-5 h-5 mr-2" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
-                  />
-                </svg>
-                Xuất file PDF
+                {isExporting ? (
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                )}
+                {isExporting ? 'Đang xuất...' : 'Xuất file PDF'}
               </button>
             </div>
           </div>

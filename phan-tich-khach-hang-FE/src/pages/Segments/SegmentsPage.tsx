@@ -14,25 +14,29 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
-import { getSegments, SegmentDTO } from '../../services/api';
+import { getSegments } from '../../services/api';
 import ChartCard from '../../components/ChartCard';
 import { Card } from '../../components/Card';
+import { SegmentDTO } from '../../model/cluster_model';
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#ef4444'];
+
+import { FileFilter } from '../../components/FileFilter';
 
 export default function SegmentsPage() {
   const [segments, setSegments] = useState<SegmentDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     fetchSegments();
-  }, []);
+  }, [selectedFile]);
 
   const fetchSegments = async () => {
     try {
       setLoading(true);
-      const data = await getSegments();
+      const data = await getSegments(selectedFile);
       setSegments(data);
       setError(null);
     } catch (err) {
@@ -47,7 +51,7 @@ export default function SegmentsPage() {
     if (!segments.length) return [];
 
     const metrics = ['avgIncome', 'avgSpending', 'avgMntWines', 'avgNumWebPurchases', 'responseRate'];
-    
+
     return metrics.map(metric => {
       const dataPoint: any = { metric: getMetricLabel(metric) };
       segments.forEach(seg => {
@@ -62,8 +66,8 @@ export default function SegmentsPage() {
   const prepareBarData = () => {
     return segments.map(seg => ({
       name: seg.segmentName,
-      'Thu nhập TB': Math.round(seg.avgIncome),
-      'Chi tiêu TB': Math.round(seg.avgSpending),
+      'Thu nhập TB': Math.round(seg.avgIncome || 0),
+      'Chi tiêu TB': Math.round(seg.avgSpending || 0),
       'Mua rượu TB': Math.round(seg.avgMntWines || 0),
       'Mua web TB': seg.avgNumWebPurchases || 0,
     }));
@@ -91,8 +95,14 @@ export default function SegmentsPage() {
     return labels[metric] || metric;
   };
 
-  const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
-  const formatPercent = (value: number) => `${value.toFixed(1)}%`;
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return 'N/A';
+    return `$${value.toLocaleString()}`;
+  };
+  const formatPercent = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return 'N/A';
+    return `${value.toFixed(1)}%`;
+  };
 
   if (loading) {
     return (
@@ -126,9 +136,12 @@ export default function SegmentsPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-7xl mx-auto">
-            <div className="mb-6">
-              <h1 className="text-3xl font-extrabold text-gray-900">Phân khúc khách hàng</h1>
-              <p className="text-gray-600">Đặc điểm và phân tích của từng nhóm khách hàng sau phân cụm KMeans</p>
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-extrabold text-gray-900">Phân khúc khách hàng</h1>
+                <p className="text-gray-600">Đặc điểm và phân tích của từng nhóm khách hàng sau phân cụm KMeans</p>
+              </div>
+              <FileFilter selectedFile={selectedFile} onFileSelect={setSelectedFile} />
             </div>
 
             {/* Segment Cards */}
@@ -144,9 +157,9 @@ export default function SegmentsPage() {
                       {segment.segmentId}
                     </div>
                   </div>
-                  
+
                   <p className="text-sm text-gray-600 mb-4 min-h-[60px]">{segment.description}</p>
-                  
+
                   <div className="border-t pt-4 space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">Số khách hàng:</span>

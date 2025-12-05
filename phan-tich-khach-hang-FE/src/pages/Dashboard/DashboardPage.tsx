@@ -6,30 +6,31 @@ import {
   Cell,
   ResponsiveContainer,
   Tooltip,
-  Legend,
   BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
-  LineChart,
-  Line,
 } from 'recharts'
 import ChartCard from '../../components/ChartCard'
 import StatCard from '../../components/StatsCard'
-import { getDashboard, DashboardDTO } from '../../services/api'
+import { getDashboard, } from '../../services/api'
+import { DashboardDTO } from '../../model/dashboard_model'
+import { FileFilter } from '../../components/FileFilter'
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981']
 
 export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState<DashboardDTO | null>(null)
   const [loading, setLoading] = useState(true)
+  const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
         setLoading(true)
-        const data = await getDashboard()
+        const data = await getDashboard(selectedFile)
+        console.log("Dashboard response: ", data);
         setDashboardData(data)
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
@@ -39,7 +40,7 @@ export default function DashboardPage() {
     }
 
     fetchDashboard()
-  }, [])
+  }, [selectedFile])
 
   if (loading) {
     return (
@@ -51,8 +52,9 @@ export default function DashboardPage() {
 
   if (!dashboardData) {
     return (
-      <div className="flex h-screen bg-gray-50 items-center justify-center">
+      <div className="flex h-screen bg-gray-50 items-center justify-center flex-col gap-4">
         <div className="text-xl text-red-600">Không thể tải dữ liệu</div>
+        <FileFilter selectedFile={selectedFile} onFileSelect={setSelectedFile} />
       </div>
     )
   }
@@ -106,7 +108,10 @@ export default function DashboardPage() {
                 <h1 className="text-3xl font-extrabold text-gray-900">Bảng điều khiển - Phân tích khách hàng</h1>
                 <p className="text-gray-600">Tổng quan: Phân khúc, doanh thu và hiệu quả marketing</p>
               </div>
-              <div className="text-sm text-gray-500">Cập nhật: Vừa mới</div>
+              <div className="flex items-center gap-4">
+                <FileFilter selectedFile={selectedFile} onFileSelect={setSelectedFile} />
+                <div className="text-sm text-gray-500">Cập nhật: Vừa mới</div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
@@ -122,13 +127,13 @@ export default function DashboardPage() {
                   <div className="relative w-full lg:w-auto" style={{ width: '400px', height: '400px' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie 
-                          data={clusterData} 
-                          dataKey="value" 
-                          cx="50%" 
-                          cy="50%" 
-                          innerRadius={100} 
-                          outerRadius={160} 
+                        <Pie
+                          data={clusterData}
+                          dataKey="value"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={100}
+                          outerRadius={160}
                           paddingAngle={3}
                           strokeWidth={2}
                         >
@@ -153,9 +158,9 @@ export default function DashboardPage() {
                       {clusterData.map((g, i) => (
                         <li key={g.name} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
                           <div className="flex items-center gap-4">
-                            <span 
-                              className="inline-block w-4 h-4 rounded-full flex-shrink-0" 
-                              style={{ background: COLORS[i % COLORS.length] }} 
+                            <span
+                              className="inline-block w-4 h-4 rounded-full flex-shrink-0"
+                              style={{ background: COLORS[i % COLORS.length] }}
                             />
                             <div>
                               <div className="text-base font-semibold text-gray-800">{g.name}</div>
@@ -207,11 +212,11 @@ export default function DashboardPage() {
                 <div style={{ width: '100%', height: 280 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie 
-                        data={educationDistribution} 
-                        cx="50%" 
-                        cy="50%" 
-                        outerRadius={80} 
+                      <Pie
+                        data={educationDistribution}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
                         dataKey="value"
                         label={(entry: any) => `${entry.name}: ${((entry.value / educationDistribution.reduce((sum, item) => sum + item.value, 0)) * 100).toFixed(0)}%`}
                         labelLine={{ stroke: '#999', strokeWidth: 1 }}

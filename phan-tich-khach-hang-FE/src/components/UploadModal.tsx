@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
-import { uploadFile, clusterData, UploadResponse } from '../services/api';
+import { uploadFile, clusterData } from '../services/api';
+import { UploadResponse } from '../model/file_upload';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -32,7 +33,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileSelect(e.dataTransfer.files[0]);
     }
@@ -42,12 +43,12 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
     const validTypes = ['text/csv', 'application/json', 'application/vnd.ms-excel'];
     const validExtensions = ['.csv', '.json'];
     const fileExtension = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
-    
+
     if (!validTypes.includes(selectedFile.type) && !validExtensions.includes(fileExtension)) {
       setError('Please select a valid CSV or JSON file');
       return;
     }
-    
+
     setFile(selectedFile);
     setError(null);
     setUploadResponse(null);
@@ -66,6 +67,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
       setUploading(true);
       setError(null);
       const response = await uploadFile(file);
+      console.log('Upload response:', response);
       setUploadResponse(response);
     } catch (err) {
       setError('Failed to upload file. Please try again.');
@@ -85,8 +87,8 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
         filePath: uploadResponse.parquetPath,
         numClusters: numClusters,
       });
-      
-      if (response.success) {
+
+      if (response) {
         // Show success and close modal after a delay
         setTimeout(() => {
           onClose();
@@ -138,9 +140,8 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
           {!uploadResponse && (
             <div>
               <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center ${
-                  dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-                }`}
+                className={`border-2 border-dashed rounded-lg p-8 text-center ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                  }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
@@ -199,49 +200,11 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
                 <CheckCircle className="text-green-600 flex-shrink-0 mt-0.5" size={20} />
                 <div>
                   <p className="text-green-800 font-medium">{uploadResponse.message}</p>
-                  <p className="text-green-700 text-sm mt-1">
-                    {uploadResponse.rowCount.toLocaleString()} rows converted to Parquet format
-                  </p>
                 </div>
               </div>
 
               {/* Data Preview */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  Data Preview (First 5 rows)
-                </h3>
-                <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {uploadResponse.preview.length > 0 &&
-                          Object.keys(uploadResponse.preview[0]).map((key) => (
-                            <th
-                              key={key}
-                              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                            >
-                              {key}
-                            </th>
-                          ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {uploadResponse.preview.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          {Object.values(row).map((value: any, cellIdx) => (
-                            <td
-                              key={cellIdx}
-                              className="px-4 py-3 whitespace-nowrap text-sm text-gray-900"
-                            >
-                              {value}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+
 
               {/* Clustering Section */}
               <div className="p-6 bg-blue-50 rounded-lg border border-blue-200">
